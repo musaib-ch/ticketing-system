@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem;">
+        <h2>Portal Branding</h2>
+        <p class="text-muted">Customize the look and feel of your ticketing system.</p>
+    </div>
+
+    <div class="glass" style="padding: 2rem;">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Portal Name</label>
+                    {{ form.portal_name }}
+                    <small class="text-muted" style="display: block; margin-top: 0.5rem;">Appears in the top left corner of the sidebar.</small>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem;">
+                <div class="form-group">
+                    <label class="form-label">Primary Color</label>
+                    {{ form.primary_color }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Secondary / Accent Color</label>
+                    {{ form.secondary_color }}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Custom Chart Palette (5 Colors)</label>
+                <small class="text-muted" style="display: block; margin-bottom: 1rem;">These colors will be used for dashboard charts (Calendar Trends, Dept Workload, etc.)</small>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 80px;">{{ form.chart_color_1 }}</div>
+                    <div style="flex: 1; min-width: 80px;">{{ form.chart_color_2 }}</div>
+                    <div style="flex: 1; min-width: 80px;">{{ form.chart_color_3 }}</div>
+                    <div style="flex: 1; min-width: 80px;">{{ form.chart_color_4 }}</div>
+                    <div style="flex: 1; min-width: 80px;">{{ form.chart_color_5 }}</div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                <div class="form-group">
+                    <label class="form-label">Company Logo (Sidebar)</label>
+                    {{ form.logo }}
+                    <small class="text-muted" style="display: block; margin-top: 0.5rem;">Appears above the Portal Name in the sidebar. Recommended: Transparent PNG.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Background Image</label>
+                    {{ form.background_image }}
+                    <small class="text-muted" style="display: block; margin-top: 0.5rem;">Appears behind the glass panels for an elegant look.</small>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 2rem; max-width: 360px;">
+                <label class="form-label">Ticket reopen window (days)</label>
+                {{ form.ticket_reopen_window_days }}
+                <small class="text-muted" style="display: block; margin-top: 0.5rem;">Set to 0 to disable reopening immediately after closure.</small>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;">Save Branding Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

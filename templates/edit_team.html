@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <a href="{% url 'manage_teams' %}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem; margin-bottom: 1rem; display: inline-block;">&larr; Back to Departments</a>
+            <h2>{{ team.name }} Settings</h2>
+            <p class="text-muted">Manage SLAs, Business Rules, and Canned Responses</p>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <!-- Basic Settings -->
+        <div class="glass" style="padding: 2rem;">
+            <h4 style="margin-bottom: 1rem;">Department Details</h4>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="update_basic" value="1">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">Department Name</label>
+                        {{ form.name }}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Query Categories</label>
+                        {{ form.query_categories }}
+                        <small class="text-muted">Comma-separated</small>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Details</button>
+            </form>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <!-- SLA & Rules -->
+        <div class="glass" style="padding: 2rem;">
+            <h4 style="margin-bottom: 1rem;">Business Rules (SLA)</h4>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="update_settings" value="1">
+                
+                <div class="form-group">
+                    <label class="form-label">SLA Target (Days)</label>
+                    <input type="number" name="sla_days" class="form-control" value="{{ team.sla_days }}" required>
+                    <small class="text-muted">Time before a ticket is flagged as escalated.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Auto-Close (Days)</label>
+                    <input type="number" name="auto_close_days" class="form-control" value="{{ team.auto_close_days }}" required>
+                    <small class="text-muted">Time to wait after "Resolved" before auto-closing.</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Save Rules</button>
+            </form>
+        </div>
+
+        <!-- Resource Files -->
+        <div class="glass" style="padding: 2rem;">
+            <h4 style="margin-bottom: 1rem;">Resource Files</h4>
+            <p class="text-muted" style="font-size: 0.85rem;">Upload PDFs/Docs for agents to link in their replies.</p>
+            
+            <form method="POST" enctype="multipart/form-data" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem;">
+                {% csrf_token %}
+                <input type="hidden" name="upload_resource" value="1">
+                <input type="file" name="file" class="form-control" required>
+                <button type="submit" class="btn btn-secondary">Upload</button>
+            </form>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                {% for file in team.resource_files.all %}
+                <div style="padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+                    <a href="{{ file.file.url }}" target="_blank">{{ file.file.name|slice:"12:" }}</a>
+                </div>
+                {% empty %}
+                <p class="text-muted" style="font-size: 0.85rem;">No files uploaded.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Workflow Automation Rules -->
+    <div class="glass" style="padding: 2rem; margin-bottom: 2rem; border-top: 4px solid var(--primary);">
+        <h4 style="margin-bottom: 1rem;">Workflow Automation Rules</h4>
+        <p class="text-muted" style="margin-bottom: 1.5rem;">Automate ticket routing and prioritization based on keywords.</p>
+        
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="update_workflow" value="1">
+            <div class="form-group">
+                <label class="form-label">Rules Configuration (JSON Array)</label>
+                <textarea name="workflow_rules" class="form-control" rows="6" placeholder='[
+  {
+    "keyword": "payroll",
+    "priority": "urgent"
+  }
+]'>{{ team.workflow_rules }}</textarea>
+                <small class="text-muted">Example: <code>[{"keyword": "tax", "priority": "high"}]</code>. If a ticket contains the keyword, it will be automatically assigned to this department with the specified priority.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Workflow Rules</button>
+        </form>
+    </div>
+
+    <!-- Canned Responses -->
+    <div class="glass" style="padding: 2rem;">
+        <h4 style="margin-bottom: 1.5rem;">Canned Responses</h4>
+        
+        <div style="margin-bottom: 2rem;">
+            {% for response in canned_responses %}
+            <div style="border: 1px solid var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <strong>{{ response.title }}</strong>
+                <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--text-muted); white-space: pre-wrap;">{{ response.body }}</p>
+            </div>
+            {% empty %}
+            <p class="text-muted">No canned responses configured yet.</p>
+            {% endfor %}
+        </div>
+
+        <h5 style="margin-bottom: 1rem;">Add New Canned Response</h5>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="add_canned" value="1">
+            <div class="form-group">
+                <label class="form-label">Template Title</label>
+                <input type="text" name="title" class="form-control" placeholder="e.g., Request Hardware Policy" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Template Body (Supports HTML/Links)</label>
+                <textarea name="body" class="form-control" rows="4" placeholder="Hello, here is the link: <a href='...'>Policy</a>" required></textarea>
+                <small class="text-muted">Tip: Copy the link from an uploaded Resource File above and paste it here.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Response</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

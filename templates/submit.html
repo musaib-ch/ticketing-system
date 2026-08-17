@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+    <!-- Main Form -->
+    <div>
+        <div style="margin-bottom: 2rem;">
+            <h2>Submit a Request</h2>
+            <p class="text-muted">Fill out the details below and we will route it to the correct department.</p>
+        </div>
+        
+        <div class="glass" style="padding: 2.5rem;">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Department / Team</label>
+                        {{ form.team }}
+                    </div>
+                    <div class="form-group" id="query-relevance-group" style="display: none; margin: 0;">
+                        <label class="form-label">Query Relevance</label>
+                        <select name="query_relevance" id="query-relevance-select" class="form-control">
+                            <option value="">Select Category...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label">Subject</label>
+                    {{ form.title }}
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label">Details</label>
+                    {{ form.description }}
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Priority</label>
+                        {{ form.priority }}
+                    </div>
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label">Attachment (Optional)</label>
+                        {{ form.attachment }}
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem; display: flex; align-items: center;">
+                        <i data-lucide="send" style="width: 18px; height: 18px; margin-right: 0.5rem;"></i> Submit Ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Sidebar Helpers -->
+    <div>
+        <div style="position: sticky; top: 2rem;">
+            <div class="glass" style="padding: 2rem; margin-top: 5rem;">
+                <h4 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="info" style="color: var(--primary); width: 20px; height: 20px;"></i>
+                    Submission Guidelines
+                </h4>
+                <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1.2rem; line-height: 1.6; margin-bottom: 0;">
+                    <li style="margin-bottom: 0.75rem;"><strong>Be Descriptive:</strong> Provide as much context as possible in the details section to help us resolve your issue faster.</li>
+                    <li style="margin-bottom: 0.75rem;"><strong>Attachments:</strong> If you are encountering an error or need to provide a document, please attach a screenshot or file.</li>
+                    <li style="margin-bottom: 0.75rem;"><strong>Unsure about Department?</strong> If you don't know who to route this to, select "Other / Unsure" and an Admin will triage it.</li>
+                    <li><strong>Priority:</strong> Reserve "Urgent" priority for system outages or time-sensitive critical issues.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Map of Team ID to Array of Categories
+    const teamCategories = JSON.parse('{{ team_categories_json|safe }}');
+    const teamSelect = document.getElementById('team-select');
+    const relevanceGroup = document.getElementById('query-relevance-group');
+    const relevanceSelect = document.getElementById('query-relevance-select');
+
+    function updateQueryCategories() {
+        const teamId = teamSelect.value;
+        const categories = teamCategories[teamId];
+        
+        // Reset dropdown
+        relevanceSelect.innerHTML = '<option value="">Select Category...</option>';
+        
+        if (categories && categories.length > 0) {
+            relevanceGroup.style.display = 'block';
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                relevanceSelect.appendChild(option);
+            });
+        } else {
+            relevanceGroup.style.display = 'none';
+        }
+    }
+
+    teamSelect.addEventListener('change', updateQueryCategories);
+    
+    // Run on load in case of validation error restoring previous selection
+    updateQueryCategories();
+</script>
+{% endblock %}

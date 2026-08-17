@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="width: 100%; padding-bottom: 3rem;">
+
+    <!-- Header & Search Banner -->
+    <div class="glass" style="padding: 2rem 2.5rem; border-radius: var(--radius); margin-bottom: 2rem; text-align: center; position: relative; overflow: hidden; width: 100%;">
+        <h1 style="font-size: 2.4rem; color: var(--text-main); margin: 0 0 0.5rem 0; font-weight: 800; letter-spacing: -0.5px;">Knowledge Base</h1>
+        <p class="text-muted" style="font-size: 1.05rem; max-width: 800px; margin: 0 auto 1.5rem auto;">Find quick answers, company guides, standard operating procedures, and policies.</p>
+
+        <!-- Search Bar -->
+        <form method="GET" action="" id="kb-search-form" style="max-width: 850px; margin: 0 auto; display: flex; gap: 0.5rem; position: relative; width: 100%;">
+            <input type="hidden" name="sort" value="{{ selected_sort }}">
+            <input type="hidden" name="category" value="{{ selected_category }}">
+            <input type="hidden" name="view" value="{{ selected_view }}">
+            <div style="position: relative; flex-grow: 1;">
+                <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted);"></i>
+                <input type="text" name="q" id="kb-search-input" value="{{ search_q }}" placeholder="Search articles, guides, policies..." class="form-control" style="padding-left: 2.75rem; height: 48px; border-radius: 10px; font-size: 0.95rem; width: 100%;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="height: 48px; padding: 0 1.5rem; border-radius: 10px;">Search</button>
+        </form>
+    </div>
+
+    <!-- Control Bar: Sorter & View Switcher -->
+    <div class="glass" style="padding: 1rem 1.5rem; border-radius: var(--radius); margin-bottom: 2rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+        
+        <!-- Left: Category / Grouping View Mode Switcher -->
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">View:</span>
+            <div style="display: inline-flex; background: rgba(0,0,0,0.05); padding: 3px; border-radius: 8px; gap: 2px;">
+                <button type="button" class="btn view-toggle-btn {% if selected_view != 'grouped' %}btn-primary{% else %}btn-outline{% endif %}" id="btn-view-all" onclick="switchViewMode('all')" style="padding: 0.4rem 0.85rem; font-size: 0.85rem; border: none; border-radius: 6px;">
+                    <i data-lucide="grid" style="width: 14px; height: 14px;"></i> All Articles
+                </button>
+                <button type="button" class="btn view-toggle-btn {% if selected_view == 'grouped' %}btn-primary{% else %}btn-outline{% endif %}" id="btn-view-grouped" onclick="switchViewMode('grouped')" style="padding: 0.4rem 0.85rem; font-size: 0.85rem; border: none; border-radius: 6px;">
+                    <i data-lucide="layers" style="width: 14px; height: 14px;"></i> Group by Department
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Sort Dropdown & Department Filter -->
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <!-- Category Filter Dropdown -->
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label for="kb-category-select" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin: 0;">Department:</label>
+                <select id="kb-category-select" onchange="filterCategory(this.value)" class="form-control" style="width: auto; padding: 0.4rem 1.8rem 0.4rem 0.75rem; font-size: 0.85rem; border-radius: 8px;">
+                    <option value="all" {% if selected_category == 'all' %}selected{% endif %}>All Departments</option>
+                    <option value="general" {% if selected_category == 'general' %}selected{% endif %}>General HR & Policies</option>
+                    {% for team in teams %}
+                    <option value="{{ team.id }}" {% if selected_category == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Sorter Dropdown -->
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <label for="kb-sort-select" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin: 0; display: flex; align-items: center; gap: 0.25rem;">
+                    <i data-lucide="arrow-down-up" style="width: 14px; height: 14px;"></i> Sort:
+                </label>
+                <select id="kb-sort-select" onchange="applySort(this.value)" class="form-control" style="width: auto; padding: 0.4rem 1.8rem 0.4rem 0.75rem; font-size: 0.85rem; border-radius: 8px;">
+                    <option value="views" {% if selected_sort == 'views' %}selected{% endif %}>Most Popular (Views)</option>
+                    <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Newest First</option>
+                    <option value="title" {% if selected_sort == 'title' %}selected{% endif %}>Alphabetical (A-Z)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW CONTAINER 1: Flat Grid View -->
+    <div id="view-mode-all" style="{% if selected_view == 'grouped' %}display: none;{% endif %}">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+            {% for article in articles %}
+            <a href="{% url 'article_detail' article.id %}" class="glass article-card" style="padding: 1.5rem; text-decoration: none; display: flex; flex-direction: column; justify-content: space-between; border-radius: var(--radius); transition: all 0.25s ease; cursor: pointer;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 0.5rem;">
+                        <h3 style="margin: 0; font-size: 1.15rem; color: var(--primary); line-height: 1.35; font-weight: 700;">{{ article.title }}</h3>
+                        {% if article.file %}
+                        <span class="badge" style="background: rgba(var(--primary-rgb), 0.12); color: var(--primary); padding: 0.25rem 0.55rem; border-radius: 6px; font-size: 0.7rem; text-transform: uppercase; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.25rem; border: 1px solid rgba(var(--primary-rgb), 0.2);">
+                            <i data-lucide="paperclip" style="width: 12px; height: 12px;"></i> {{ article.file_extension }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <p style="color: var(--text-main); font-size: 0.9rem; margin: 0 0 1.25rem 0; line-height: 1.55; opacity: 0.85;">
+                        {{ article.content|truncatechars:120 }}
+                    </p>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border);">
+                    <span style="font-size: 0.78rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 500;">
+                        <i data-lucide="folder" style="width: 14px; height: 14px; color: var(--primary);"></i> {{ article.team.name|default:"General HR & Policies" }}
+                    </span>
+                    <span style="font-size: 0.78rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i> {{ article.view_count }} views
+                    </span>
+                </div>
+            </a>
+            {% empty %}
+            <div class="glass" style="grid-column: 1 / -1; padding: 4rem 2rem; text-align: center; color: var(--text-muted);">
+                <i data-lucide="search-x" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <h3 style="margin: 0 0 0.5rem 0; color: var(--text-main);">No articles found</h3>
+                <p style="font-size: 0.95rem; margin: 0;">Try adjusting your search query or department filter.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- VIEW CONTAINER 2: Grouped by Department View -->
+    <div id="view-mode-grouped" style="{% if selected_view != 'grouped' %}display: none;{% endif %}">
+        {% for group in grouped_articles %}
+        <div style="margin-bottom: 2.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border);">
+                <div style="width: 36px; height: 36px; background: rgba(var(--primary-rgb), 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                    <i data-lucide="folder-open" style="width: 20px; height: 20px;"></i>
+                </div>
+                <h2 style="margin: 0; font-size: 1.35rem; color: var(--text-main); font-weight: 700;">{{ group.team_name }}</h2>
+                <span class="badge" style="background: var(--primary); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                    {{ group.articles|length }} article{% if group.articles|length != 1 %}s{% endif %}
+                </span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+                {% for article in group.articles %}
+                <a href="{% url 'article_detail' article.id %}" class="glass article-card" style="padding: 1.5rem; text-decoration: none; display: flex; flex-direction: column; justify-content: space-between; border-radius: var(--radius); transition: all 0.25s ease; cursor: pointer;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 0.5rem;">
+                            <h3 style="margin: 0; font-size: 1.15rem; color: var(--primary); line-height: 1.35; font-weight: 700;">{{ article.title }}</h3>
+                            {% if article.file %}
+                            <span class="badge" style="background: rgba(var(--primary-rgb), 0.12); color: var(--primary); padding: 0.25rem 0.55rem; border-radius: 6px; font-size: 0.7rem; text-transform: uppercase; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.25rem; border: 1px solid rgba(var(--primary-rgb), 0.2);">
+                                <i data-lucide="paperclip" style="width: 12px; height: 12px;"></i> {{ article.file_extension }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        <p style="color: var(--text-main); font-size: 0.9rem; margin: 0 0 1.25rem 0; line-height: 1.55; opacity: 0.85;">
+                            {{ article.content|truncatechars:120 }}
+                        </p>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border);">
+                        <span style="font-size: 0.78rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 500;">
+                            <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--primary);"></i> {{ article.updated_at|date:"M d, Y" }}
+                        </span>
+                        <span style="font-size: 0.78rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i> {{ article.view_count }} views
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="glass" style="padding: 4rem 2rem; text-align: center; color: var(--text-muted);">
+            <i data-lucide="search-x" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-main);">No categories found</h3>
+            <p style="font-size: 0.95rem; margin: 0;">Try adjusting your search query or filters.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .article-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(31, 38, 135, 0.18);
+        border-color: rgba(var(--primary-rgb), 0.4);
+    }
+</style>
+
+<script>
+    function updateUrlParams(key, value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set(key, value);
+        window.location.href = url.toString();
+    }
+
+    function switchViewMode(mode) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('view', mode);
+        window.history.replaceState({}, '', url.toString());
+
+        const viewAll = document.getElementById('view-mode-all');
+        const viewGrouped = document.getElementById('view-mode-grouped');
+        const btnAll = document.getElementById('btn-view-all');
+        const btnGrouped = document.getElementById('btn-view-grouped');
+
+        if (mode === 'grouped') {
+            viewAll.style.display = 'none';
+            viewGrouped.style.display = 'block';
+            btnAll.className = 'btn view-toggle-btn btn-outline';
+            btnGrouped.className = 'btn view-toggle-btn btn-primary';
+        } else {
+            viewAll.style.display = 'block';
+            viewGrouped.style.display = 'none';
+            btnAll.className = 'btn view-toggle-btn btn-primary';
+            btnGrouped.className = 'btn view-toggle-btn btn-outline';
+        }
+    }
+
+    function filterCategory(cat) {
+        updateUrlParams('category', cat);
+    }
+
+    function applySort(sortVal) {
+        updateUrlParams('sort', sortVal);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.lucide) lucide.createIcons();
+    });
+</script>
+{% endblock %}

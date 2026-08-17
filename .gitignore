@@ -1,0 +1,18 @@
+# Python and local environments
+venv/
+__pycache__/
+*.py[cod]
+
+# Local/runtime data and secrets
+.env
+db.sqlite3
+media/
+staticfiles/
+mock_ad.xlsx
+~$*.xlsx
+
+# Editor/OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

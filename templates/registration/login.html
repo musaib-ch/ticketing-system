@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - HR Servicedesk</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+</head>
+<body style="display: flex; align-items: center; justify-content: center;">
+
+    <div class="glass" style="width: 100%; max-width: 400px; padding: 3rem 2.5rem; text-align: center;">
+        <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; background: linear-gradient(to right, #4f46e5, #14b8a6); -webkit-background-clip: text; color: transparent;">
+            HR Servicedesk
+        </h1>
+        <p class="text-muted" style="margin-bottom: 2rem;">Login with your AD Credentials</p>
+
+        {% if form.errors %}
+        <div role="alert" style="margin: 0 0 1.25rem; padding: .85rem 1rem; border-radius: 10px; text-align: left; color: #b91c1c; background: rgba(220, 38, 38, .08); border: 1px solid rgba(220, 38, 38, .2); font-size: .9rem;">
+            Username or password is incorrect. Check the values in <strong>mock_ad.xlsx</strong> and try again.
+        </div>
+        {% endif %}
+
+        {% if DEBUG %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group" style="text-align: left;">
+                <label class="form-label">Username</label>
+                <input type="text" name="username" class="form-control" required autofocus>
+            </div>
+            <div class="form-group" style="text-align: left;">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 0.75rem;">
+                Secure Login
+            </button>
+            <input type="hidden" name="next" value="{{ next }}">
+        </form>
+        {% else %}
+        <div style="margin: 1.5rem 0; display: flex; align-items: center; justify-content: center;">
+            <hr style="flex-grow: 1; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
+            <span style="padding: 0 1rem; color: var(--text-muted); font-size: 0.875rem;">OR</span>
+            <hr style="flex-grow: 1; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
+        </div>
+
+        <a href="{% url 'microsoft_login' %}" class="btn glass" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; text-decoration: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" fill="#00a4ef"/>
+            </svg>
+            Sign in with Microsoft
+        </a>
+        {% endif %}
+    </div>
+
+</body>
+</html>

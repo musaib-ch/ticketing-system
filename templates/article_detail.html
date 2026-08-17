@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="width: 100%; max-width: 1200px; margin: 0 auto;">
+    <a href="{% url 'knowledge_base' %}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem; margin-bottom: 1.5rem; display: inline-block;">&larr; Back to Knowledge Base</a>
+    
+    <div class="glass" style="padding: 3rem;">
+        <div style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <h1 style="margin: 0; font-size: 2rem; color: var(--text-main); line-height: 1.2;">{{ article.title }}</h1>
+            </div>
+            
+            <div style="display: flex; gap: 1.5rem; align-items: center;">
+                <span style="font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                    <i data-lucide="calendar" style="width: 14px; height: 14px;"></i> {{ article.updated_at|date:"M d, Y" }}
+                </span>
+                <span style="font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                    <i data-lucide="book-open" style="width: 14px; height: 14px;"></i> {{ article.team.name|default:"General" }}
+                </span>
+                <span style="font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                    <i data-lucide="eye" style="width: 14px; height: 14px;"></i> {{ article.view_count }} views
+                </span>
+            </div>
+        </div>
+        
+        <div style="color: var(--text-main); font-size: 1.05rem; line-height: 1.7; white-space: pre-wrap;">{{ article.content|safe }}</div>
+        
+        {% if article.file %}
+        <div style="margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--border);">
+            <h4 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="paperclip" style="width: 18px; height: 18px;"></i> Attached Document / Media
+            </h4>
+
+            {% if article.is_image %}
+            <!-- Image Attachment Preview -->
+            <div class="glass" style="padding: 1rem; border-radius: var(--radius); text-align: center;">
+                <img src="{{ article.file.url }}" alt="{{ article.title }}" style="max-width: 100%; height: auto; max-height: 500px; border-radius: 8px; object-fit: contain;">
+                <div style="margin-top: 0.75rem; text-align: right;">
+                    <a href="{{ article.file.url }}" download class="btn btn-outline" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">
+                        <i data-lucide="download" style="width: 14px; height: 14px;"></i> Download Image
+                    </a>
+                </div>
+            </div>
+            {% elif article.is_pdf %}
+            <!-- PDF Viewer and Download -->
+            <div class="glass" style="padding: 1.25rem 1.5rem; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 44px; height: 44px; background: rgba(239, 68, 68, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--danger);">
+                        <i data-lucide="file-text" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 0.95rem;">{{ article.filename }}</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">PDF Document</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="{{ article.file.url }}" target="_blank" class="btn btn-outline" style="font-size: 0.85rem;">
+                        <i data-lucide="external-link" style="width: 14px; height: 14px;"></i> Open PDF
+                    </a>
+                    <a href="{{ article.file.url }}" download class="btn btn-primary" style="font-size: 0.85rem;">
+                        <i data-lucide="download" style="width: 14px; height: 14px;"></i> Download
+                    </a>
+                </div>
+            </div>
+            <iframe src="{{ article.file.url }}" style="width: 100%; height: 500px; border: 1px solid var(--border); border-radius: var(--radius); background: white;"></iframe>
+            {% elif article.is_ppt %}
+            <!-- PowerPoint Attachment Card -->
+            <div class="glass" style="padding: 1.5rem; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #f97316;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 48px; height: 48px; background: rgba(249, 115, 22, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #f97316;">
+                        <i data-lucide="presentation" style="width: 26px; height: 26px;"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 1rem; margin-bottom: 0.25rem;">{{ article.filename }}</strong>
+                        <span class="badge" style="background: #f97316; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">PowerPoint Presentation</span>
+                    </div>
+                </div>
+                <a href="{{ article.file.url }}" download class="btn btn-primary" style="background: #f97316; border: none;">
+                    <i data-lucide="download" style="width: 16px; height: 16px;"></i> Download Presentation
+                </a>
+            </div>
+            {% elif article.is_word %}
+            <!-- Word Document Attachment Card -->
+            <div class="glass" style="padding: 1.5rem; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #2563eb;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 48px; height: 48px; background: rgba(37, 99, 235, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #2563eb;">
+                        <i data-lucide="file-text" style="width: 26px; height: 26px;"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 1rem; margin-bottom: 0.25rem;">{{ article.filename }}</strong>
+                        <span class="badge" style="background: #2563eb; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">Word Document</span>
+                    </div>
+                </div>
+                <a href="{{ article.file.url }}" download class="btn btn-primary" style="background: #2563eb; border: none;">
+                    <i data-lucide="download" style="width: 16px; height: 16px;"></i> Download Word Document
+                </a>
+            </div>
+            {% else %}
+            <!-- Generic File Attachment Card -->
+            <div class="glass" style="padding: 1.5rem; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 48px; height: 48px; background: rgba(var(--primary-rgb), 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                        <i data-lucide="file" style="width: 26px; height: 26px;"></i>
+                    </div>
+                    <div>
+                        <strong style="display: block; font-size: 1rem; margin-bottom: 0.25rem;">{{ article.filename }}</strong>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">{{ article.file_extension }} File</span>
+                    </div>
+                </div>
+                <a href="{{ article.file.url }}" download class="btn btn-primary">
+                    <i data-lucide="download" style="width: 16px; height: 16px;"></i> Download File
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.lucide) lucide.createIcons();
+    });
+</script>
+{% endblock %}

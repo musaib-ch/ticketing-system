@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose a view · {{ branding.portal_name|default:'HR Servicedesk' }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+    <style>
+        :root { --primary: {{ branding.primary_color|default:'#4f46e5' }}; --primary-rgb: {{ branding.primary_rgb|default:'79, 70, 229' }}; --accent: {{ branding.secondary_color|default:'#14b8a6' }}; }
+        body { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; }
+        {% if branding.background_image %}body { background: url('{{ branding.background_image.url }}') center / cover fixed; }{% endif %}
+    </style>
+</head>
+<body>
+    <main style="width: min(760px, 100%);">
+        <div class="glass" style="padding: clamp(2rem, 6vw, 4rem); border-radius: 28px; text-align: center;">
+            <div style="width: 72px; height: 72px; margin: 0 auto 1.5rem; border-radius: 20px; background: linear-gradient(135deg, var(--primary), var(--accent)); display: grid; place-items: center; color: white; box-shadow: 0 12px 28px rgba(var(--primary-rgb), .28);">
+                <i data-lucide="layers-3" style="width: 34px; height: 34px;"></i>
+            </div>
+            <p style="font-size:.82rem; letter-spacing:.12em; font-weight:700; color:var(--primary); text-transform:uppercase; margin:0 0 .75rem;">{{ branding.portal_name|default:'HR Servicedesk' }}</p>
+            <h1 style="margin:0; color:var(--text-main); font-size:clamp(1.9rem, 5vw, 2.6rem);">Where would you like to work?</h1>
+            <p class="text-muted" style="font-size:1.05rem; margin: .9rem auto 2.5rem; max-width: 520px;">Choose a view for this session. You can switch at any time from the sidebar.</p>
+
+            <form method="POST" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:1rem; text-align:left;">
+                {% csrf_token %}
+                <button type="submit" name="role" value="employee" style="appearance:none; width:100%; border:1px solid var(--border); border-radius:18px; background:rgba(255,255,255,.72); padding:1.5rem; cursor:pointer; text-align:left; color:inherit; transition:transform .18s ease, box-shadow .18s ease;">
+                    <span style="width:46px;height:46px;border-radius:13px;background:rgba(var(--primary-rgb),.12);color:var(--primary);display:grid;place-items:center;margin-bottom:1rem;"><i data-lucide="user" style="width:23px;height:23px;"></i></span>
+                    <strong style="display:block;font-size:1.18rem;color:var(--text-main);margin-bottom:.4rem;">Employee portal</strong>
+                    <span class="text-muted" style="font-size:.92rem;line-height:1.5;">Submit requests, follow updates, and access the knowledge base.</span>
+                </button>
+                <button type="submit" name="role" value="admin" style="appearance:none; width:100%; border:1px solid var(--primary); border-radius:18px; background:rgba(var(--primary-rgb),.06); padding:1.5rem; cursor:pointer; text-align:left; color:inherit; transition:transform .18s ease, box-shadow .18s ease;">
+                    <span style="width:46px;height:46px;border-radius:13px;background:var(--primary);color:white;display:grid;place-items:center;margin-bottom:1rem;"><i data-lucide="shield-check" style="width:23px;height:23px;"></i></span>
+                    <strong style="display:block;font-size:1.18rem;color:var(--primary);margin-bottom:.4rem;">Agent portal</strong>
+                    <span class="text-muted" style="font-size:.92rem;line-height:1.5;">Manage queues, route requests, and work with your department.</span>
+                </button>
+            </form>
+        </div>
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>
