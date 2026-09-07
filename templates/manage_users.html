@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h2>User Management</h2>
+        <p class="text-muted">Manage portal administrators and department representatives.</p>
+    </div>
+    <div>
+        <a href="{% url 'add_user' %}" class="btn btn-primary">
+            <i data-lucide="plus" style="width:18px;height:18px;vertical-align:middle;margin-right:0.25rem;"></i> Add AD User
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div style="margin-bottom: 1.5rem;">
+    {% for message in messages %}
+    <div class="glass" style="padding: 1rem; border-left: 4px solid var(--success); color: var(--success); font-weight: 500;">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="glass" style="padding: 2rem;">
+    <table class="glass-table">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td style="font-weight: 600;">{{ u.username }}</td>
+                <td>{{ u.get_full_name|default:"-" }}</td>
+                <td>
+                    {% if u.role == 'admin' %}
+                        <span class="badge badge-urgent">Admin</span>
+                    {% elif u.role == 'functional_rep' %}
+                        <span class="badge badge-open">Agent</span>
+                    {% else %}
+                        <span class="badge badge-closed">Employee</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.teams.all %}
+                        {% for t in u.teams.all %}
+                            <span class="badge" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); margin-right: 0.25rem;">{{ t.name }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <a href="{% url 'edit_user' u.id %}" class="btn btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <i data-lucide="edit-2" style="width:14px;height:14px;"></i> Edit
+                        </a>
+                        {% if u.role != 'employee' %}
+                        <form method="POST" action="{% url 'demote_user' u.id %}" style="margin: 0;" onsubmit="return confirm('Demote this user to Employee and revoke access?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; color: var(--danger); border-color: var(--danger);">
+                                <i data-lucide="user-minus" style="width:14px;height:14px;"></i> Demote
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">No portal administrators or department representatives have been added yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

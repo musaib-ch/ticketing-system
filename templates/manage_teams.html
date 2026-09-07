@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+    <!-- Left Col: Team List -->
+    <div>
+        <div style="margin-bottom: 2rem;">
+            <h2>Departments</h2>
+            <p class="text-muted">Manage functional teams for ticket routing.</p>
+        </div>
+        
+        {% if messages %}
+        <div style="margin-bottom: 1.5rem;">
+            {% for message in messages %}
+            <div class="glass" style="padding: 1rem; border-left: 4px solid var(--success); color: var(--success); font-weight: 500;">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="glass" style="padding: 2rem;">
+            <table class="glass-table">
+                <thead>
+                    <tr>
+                        <th>Department Name</th>
+                        <th>Categories</th>
+                        <th>Active Agents</th>
+                        <th>Options</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in teams %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ team.name }}</td>
+                        <td>
+                            {% if team.query_categories %}
+                                {% for cat in team.query_categories.split %}
+                                    <span class="badge badge-open" style="margin-right: 0.25rem;">{{ cat|cut:"," }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ team.members.count }}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: nowrap;">
+                                <a href="{% url 'edit_team' team.id %}" class="btn btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; white-space: nowrap;">
+                                    <i data-lucide="settings" style="width:14px;height:14px;"></i> Edit
+                                </a>
+                                <a href="{% url 'delete_team' team.id %}" class="btn btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; color: var(--danger); border-color: var(--danger); white-space: nowrap;">
+                                    <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-muted" style="text-align: center; padding: 2rem;">No departments configured.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Right Col: Add Team -->
+    <div>
+        <div style="margin-bottom: 2rem;">
+            <h2>New Department</h2>
+        </div>
+        <div class="glass" style="padding: 2rem;">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label">Department Name</label>
+                    {{ form.name }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Query Categories <small class="text-muted">(Comma-separated)</small></label>
+                    {{ form.query_categories }}
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Department</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,529 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Include CDNs for Charts and PDF -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+    <div>
+        <h2>Welcome back, {{ user.first_name|default:user.username }}!</h2>
+        <p class="text-muted">Here is an overview of your tickets and activity.</p>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <button onclick="document.getElementById('pdfModal').style.display='flex'" class="btn btn-outline" style="color: var(--primary);">
+            <i data-lucide="download" style="width:16px;height:16px;margin-right:0.25rem;vertical-align:middle;"></i> Export PDF
+        </button>
+        
+        <div style="position: relative;">
+            <button class="btn btn-outline" onclick="document.getElementById('customizeMenu').classList.toggle('hidden')">
+                <i data-lucide="layout-dashboard" style="width:16px;height:16px;margin-right:0.25rem;vertical-align:middle;"></i> Customize
+            </button>
+            <div id="customizeMenu" class="glass hidden" style="position: absolute; right: 0; top: 110%; padding: 1rem; z-index: 100; min-width: 200px; border-radius: var(--radius);">
+                <h5 style="margin-top: 0;">Toggle Widgets</h5>
+                <label style="display:block;margin-bottom:0.5rem;"><input type="checkbox" class="widget-toggle" data-target="widget-kpi" checked> KPIs</label>
+                <label style="display:block;margin-bottom:0.5rem;"><input type="checkbox" class="widget-toggle" data-target="widget-aging" checked> Aging Tickets</label>
+                <label style="display:block;margin-bottom:0.5rem;"><input type="checkbox" class="widget-toggle" data-target="widget-status" checked> Status Breakdown</label>
+                <label style="display:block;margin-bottom:0.5rem;"><input type="checkbox" class="widget-toggle" data-target="widget-dept" checked> Dept Workload</label>
+                <label style="display:block;margin-bottom:0.5rem;"><input type="checkbox" class="widget-toggle" data-target="widget-heatmap" checked> Heatmap</label>
+                <label style="display:block;margin-bottom:0.5rem;"><input type="checkbox" class="widget-toggle" data-target="widget-calendar" checked> Calendar Trends</label>
+                <label style="display:block;margin-bottom:0.5rem;"><input type="checkbox" class="widget-toggle" data-target="widget-avg-res" checked> Avg Resolution Time</label>
+                <hr style="border:0; border-top:1px solid var(--border); margin: 0.5rem 0;">
+                <label style="display:block;margin-bottom:0.5rem; font-weight: bold;"><input type="checkbox" class="widget-toggle" data-target="show_chart_labels" checked> Show Chart Labels</label>
+            </div>
+        </div>
+
+        <form method="GET" style="display: flex; gap: 0.5rem; margin: 0;">
+            <input type="text" name="q" class="form-control" placeholder="Search Ticket # or keywords..." value="{{ request.GET.q }}" style="min-width: 200px;">
+            <button type="submit" class="btn btn-outline">
+                <i data-lucide="search" style="width:16px;height:16px;"></i>
+            </button>
+        </form>
+        {% if user.role == 'employee' %}
+        <a href="{% url 'submit_ticket' %}" class="btn btn-primary">
+            <i data-lucide="plus" style="width:18px;height:18px;vertical-align:middle;margin-right:0.25rem;"></i> New Ticket
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div id="dashboard-content">
+    <!-- KPIs -->
+    <div id="widget-kpi" class="widget" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="glass" style="padding: 1.5rem; border-left: 4px solid var(--status-open);">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Open Requests</h4>
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--text-main);">{{ open_count }}</div>
+        </div>
+        <div class="glass" style="padding: 1.5rem; border-left: 4px solid var(--status-resolved);">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Resolved</h4>
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--text-main);">{{ resolved_count }}</div>
+        </div>
+        
+        {% if user.role == 'admin' %}
+        <div class="glass" style="padding: 1.5rem; border-left: 4px solid var(--warning);">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Unassigned Queue</h4>
+            <div style="font-size: 2.5rem; font-weight: 700; color: var(--text-main);">{{ unassigned_count }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Charts Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <div id="widget-aging" class="widget glass" style="padding: 1.5rem; height: 320px; display: flex; flex-direction: column; overflow: hidden;">
+            <h4 style="margin-bottom: 1rem;">Aging Tickets</h4>
+            <div style="flex-grow: 1; position: relative; min-height: 0;"><canvas id="agingChart"></canvas></div>
+        </div>
+        <div id="widget-status" class="widget glass" style="padding: 1.5rem; height: 320px; display: flex; flex-direction: column; overflow: hidden;">
+            <h4 style="margin-bottom: 1rem;">Status Breakdown</h4>
+            <div style="flex-grow: 1; position: relative; min-height: 0;"><canvas id="statusChart"></canvas></div>
+        </div>
+        <div id="widget-dept" class="widget glass" style="padding: 1.5rem; height: 320px; display: flex; flex-direction: column; overflow: hidden;">
+            <h4 style="margin-bottom: 1rem;">Department Workload</h4>
+            <div style="flex-grow: 1; position: relative; min-height: 0;"><canvas id="deptChart"></canvas></div>
+        </div>
+        <div id="widget-heatmap" class="widget glass" style="padding: 1.5rem; height: 320px; display: flex; flex-direction: column; overflow: hidden;">
+            <h4 style="margin-bottom: 1rem;">Priority Heatmap</h4>
+            <div style="flex-grow: 1; position: relative; min-height: 0;"><canvas id="heatmapChart"></canvas></div>
+        </div>
+    </div>
+    
+    <!-- Analysis Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <div id="widget-calendar" class="widget glass" style="padding: 1.5rem; height: 400px; display: flex; flex-direction: column; overflow: hidden;">
+            <h4 style="margin-bottom: 1rem;">Calendar Trends (Last 30 Days)</h4>
+            <div style="flex-grow: 1; position: relative; min-height: 0;"><canvas id="calendarChart"></canvas></div>
+        </div>
+        <div id="widget-avg-res" class="widget glass" style="padding: 1.5rem; height: 400px; display: flex; flex-direction: column; overflow: hidden;">
+            <h4 style="margin-bottom: 1rem;">Avg Resolution Time (Minutes)</h4>
+            <div style="flex-grow: 1; position: relative; min-height: 0;"><canvas id="avgResChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Table -->
+    <div class="glass" style="padding: 2rem; position: relative;">
+        <h3 style="margin-bottom: 1.5rem;">Recent Activity</h3>
+        <table class="glass-table interactive-table">
+            <thead>
+                <tr>
+                    <th style="width: 100px;"><a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=ticket&dir={% if request.GET.sort == 'ticket' and request.GET.dir == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none;">Ticket #</a></th>
+                    <th><a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=subject&dir={% if request.GET.sort == 'subject' and request.GET.dir == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none;">Request Details</a></th>
+                    <th><a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=requester&dir={% if request.GET.sort == 'requester' and request.GET.dir == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none;">Requester</a></th>
+                    <th>Status</th>
+                    <th><a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}sort=priority&dir={% if request.GET.sort == 'priority' and request.GET.dir == 'asc' %}desc{% else %}asc{% endif %}" style="color: inherit; text-decoration: none;">Priority</a></th>
+                    <th>SLA Timer</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr onclick="openSidePanel('{{ ticket.id }}')" class="hover-row">
+                    <td style="font-weight: 500; color: var(--text-muted); position: relative;">
+                        {{ ticket.ticket_number }}
+                        {% if ticket.has_unread_messages %}
+                        <span style="position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; background-color: var(--error); border-radius: 50%;" title="Unread messages"></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                            <strong>{{ ticket.title }}</strong>
+                        <br><small class="text-muted">{{ ticket.team.name|default:"Unassigned" }}</small>
+                    </td>
+                    <td>{{ ticket.requester.get_full_name|default:ticket.requester.username }}</td>
+                    <td><span class="badge" style="background-color: var(--status-{{ ticket.status|default:'open' }}); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">{{ ticket.get_status_display }}</span></td>
+                    <td><span class="badge" style="background-color: var(--priority-{{ ticket.priority|default:'normal' }}); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">{{ ticket.get_priority_display }}</span></td>
+                    <td>
+                        <span class="sla-timer" data-created="{{ ticket.created_at.isoformat }}" data-sla="{{ ticket.team.sla_days|default:1 }}" style="font-weight: 600; font-size: 0.85rem;"></span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No tickets found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Side Panel Overlay -->
+<div id="sidePanel" class="glass" style="position: fixed; top: 0; right: -800px; width: 800px; max-width: 90vw; height: 100vh; z-index: 9999; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; border-left: 1px solid var(--glass-border); border-radius: 20px 0 0 20px;">
+    <div style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0;">Ticket Details</h3>
+        <button onclick="closeSidePanel()" class="btn btn-outline" style="border:none; padding: 0.5rem;"><i data-lucide="x" style="width:20px;height:20px;"></i></button>
+    </div>
+    <div id="sidePanelContent" style="padding: 1.5rem;">
+        <div style="text-align:center; padding: 2rem;"><i data-lucide="loader" class="spin" style="width:24px;height:24px;"></i> Loading...</div>
+    </div>
+</div>
+<div id="sidePanelOverlay" onclick="closeSidePanel()" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 9998; display: none;"></div>
+
+
+<!-- PDF Export Modal -->
+<div id="pdfModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center;">
+    <div class="glass" style="padding: 2rem; width: 400px; max-width: 90%; background: var(--surface); border-radius: var(--radius);">
+        <h3 style="margin-top:0;">Export PDF Report</h3>
+        <p class="text-muted">Select the sections to include in your report:</p>
+        <div id="pdfCheckboxes" style="margin-bottom: 1.5rem;"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+            <button onclick="document.getElementById('pdfModal').style.display='none'" class="btn btn-outline">Cancel</button>
+            <button id="confirmExportPdfBtn" class="btn btn-primary">Generate PDF</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pdf-export-mode #dashboard-content { width: 1200px !important; max-width: none !important; }
+    .pdf-export-mode .widget { page-break-inside: avoid; max-height: none !important; }
+    .pdf-export-mode canvas { max-height: 300px !important; }
+
+    .hidden { display: none !important; }
+    .interactive-table .hover-row:hover { background-color: var(--glass-bg-hover); cursor: pointer; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        lucide.createIcons();
+
+        // 1. Chart Data from Backend
+        // escapejs (not |safe) so a stray "</script>" inside any team/agent
+        // name embedded in this JSON can't break out of this inline script
+        // block and inject markup - the same safe pattern already used for
+        // dashboard_prefs below.
+        const rawAging = JSON.parse('{{ aging_data|escapejs|default:"[0,0,0]" }}');
+        const rawStatus = JSON.parse('{{ status_data|escapejs|default:"[]" }}');
+        const rawDept = JSON.parse('{{ dept_data|escapejs|default:"[]" }}');
+        const rawHeatmap = JSON.parse('{{ heatmap_data|escapejs|default:"[]" }}');
+        const rawBusyDays = JSON.parse('{{ busy_days_data|escapejs|default:"[]" }}');
+        const rawAvgRes = JSON.parse('{{ avg_resolution_data|escapejs|default:"[]" }}');
+        
+        // Setup Chart.js DataLabels Plugin
+        Chart.register(ChartDataLabels);
+        let showLabels = true;
+
+
+        // Strict Colors mapped for JS
+        const colors = {
+            open: getComputedStyle(document.body).getPropertyValue('--status-open').trim() || '#3b82f6',
+            inprogress: getComputedStyle(document.body).getPropertyValue('--status-inprogress').trim() || '#f59e0b',
+            resolved: getComputedStyle(document.body).getPropertyValue('--status-resolved').trim() || '#10b981',
+            closed: getComputedStyle(document.body).getPropertyValue('--status-closed').trim() || '#9ca3af',
+            urgent: getComputedStyle(document.body).getPropertyValue('--priority-urgent').trim() || '#ef4444',
+            high: getComputedStyle(document.body).getPropertyValue('--priority-high').trim() || '#f59e0b',
+            normal: getComputedStyle(document.body).getPropertyValue('--priority-normal').trim() || '#3b82f6',
+            low: getComputedStyle(document.body).getPropertyValue('--priority-low').trim() || '#9ca3af',
+        };
+
+        const customPalette = [
+            getComputedStyle(document.body).getPropertyValue('--chart-1').trim() || '#4f46e5',
+            getComputedStyle(document.body).getPropertyValue('--chart-2').trim() || '#14b8a6',
+            getComputedStyle(document.body).getPropertyValue('--chart-3').trim() || '#f59e0b',
+            getComputedStyle(document.body).getPropertyValue('--chart-4').trim() || '#ef4444',
+            getComputedStyle(document.body).getPropertyValue('--chart-5').trim() || '#8b5cf6'
+        ];
+        
+        const getCustomColor = (index) => customPalette[index % customPalette.length];
+
+        // Aging Chart
+        new Chart(document.getElementById('agingChart'), {
+            type: 'bar',
+            data: {
+                labels: ['< 24 Hours', '1-3 Days', '> 3 Days'],
+                datasets: [{
+                    label: 'Open Tickets',
+                    data: rawAging,
+                    backgroundColor: [colors.open, colors.inprogress, colors.urgent]
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Status Chart
+        const statusMap = { 'open': 'Open', 'in_progress': 'In Progress', 'resolved': 'Resolved', 'closed': 'Closed' };
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: rawStatus.map(s => statusMap[s.status] || s.status),
+                datasets: [{
+                    data: rawStatus.map(s => s.c),
+                    backgroundColor: rawStatus.map(s => colors[s.status.replace('_', '')] || colors.open)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 8,
+                            font: { size: 11 }
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 0,
+                        bottom: 10,
+                        left: 10,
+                        right: 10
+                    }
+                }
+            }
+        });
+
+        // Dept Chart
+        new Chart(document.getElementById('deptChart'), {
+            type: 'bar',
+            data: {
+                labels: rawDept.map(d => d.team__name || 'Unassigned'),
+                datasets: [{
+                    label: 'Tickets',
+                    data: rawDept.map(d => d.c),
+                    backgroundColor: rawDept.map((_, i) => getCustomColor(i))
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Heatmap (Simulated via Bubble chart or simple grouped bar)
+        // For simplicity of Chart.js, we do a grouped bar by team
+        const teams = [...new Set(rawHeatmap.map(h => h.team__name))];
+        const priorities = ['urgent', 'high', 'normal', 'low'];
+        const heatmapDatasets = priorities.map(p => {
+            return {
+                label: p.charAt(0).toUpperCase() + p.slice(1),
+                data: teams.map(t => {
+                    const found = rawHeatmap.find(h => h.team__name === t && h.priority === p);
+                    return found ? found.c : 0;
+                }),
+                backgroundColor: colors[p]
+            };
+        });
+
+        new Chart(document.getElementById('heatmapChart'), {
+            type: 'bar',
+            data: { labels: teams, datasets: heatmapDatasets },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+        });
+
+        // Calendar Trends Chart (Stacked Bar by Date)
+        const calendarDates = [...new Set(rawBusyDays.map(d => d.date))];
+        const calendarTeams = [...new Set(rawBusyDays.map(d => d.team__name || 'Unassigned'))];
+        
+        const calendarDatasets = calendarTeams.map((t, index) => {
+            return {
+                label: t,
+                data: calendarDates.map(date => {
+                    const found = rawBusyDays.find(d => d.date === date && (d.team__name || 'Unassigned') === t);
+                    return found ? found.c : 0;
+                }),
+                backgroundColor: getCustomColor(index)
+            };
+        });
+
+        new Chart(document.getElementById('calendarChart'), {
+            type: 'bar',
+            data: { labels: calendarDates, datasets: calendarDatasets },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                scales: { 
+                    x: { stacked: true, title: { display: true, text: 'Date' } }, 
+                    y: { stacked: true, title: { display: true, text: 'Tickets Created' } } 
+                } 
+            }
+        });
+
+
+        // Avg Resolution Time Chart
+        new Chart(document.getElementById('avgResChart'), {
+            type: 'bar',
+            data: {
+                labels: rawAvgRes.map(d => d.team__name || 'Unassigned'),
+                datasets: [{
+                    label: 'Avg Minutes',
+                    data: rawAvgRes.map(d => d.avg_time),
+                    backgroundColor: rawAvgRes.map((_, i) => getCustomColor(i))
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // 2. SLA Timers
+        function updateTimers() {
+            const now = new Date();
+            document.querySelectorAll('.sla-timer').forEach(el => {
+                const created = new Date(el.getAttribute('data-created'));
+                const slaDays = parseInt(el.getAttribute('data-sla')) || 1;
+                const target = new Date(created.getTime() + slaDays * 24 * 60 * 60 * 1000);
+                
+                const diff = target - now;
+                if (diff <= 0) {
+                    el.innerText = 'Breached';
+                    el.style.color = getComputedStyle(document.body).getPropertyValue('--sla-breached');
+                } else {
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    el.innerText = `${hours}h ${mins}m left`;
+                    
+                    if (hours < (slaDays * 24 * 0.2)) {
+                        el.style.color = getComputedStyle(document.body).getPropertyValue('--sla-warning');
+                    } else {
+                        el.style.color = getComputedStyle(document.body).getPropertyValue('--sla-healthy');
+                    }
+                }
+            });
+        }
+        updateTimers();
+        setInterval(updateTimers, 60000);
+
+        // 3. Customization Logic
+        const prefsRaw = '{{ user.dashboard_prefs|escapejs }}';
+        let prefs = {};
+        try { prefs = JSON.parse(prefsRaw); } catch(e) {}
+        
+        document.querySelectorAll('.widget-toggle').forEach(checkbox => {
+            const targetId = checkbox.getAttribute('data-target');
+            if (prefs[targetId] !== undefined) {
+                checkbox.checked = prefs[targetId];
+                document.getElementById(targetId).style.display = prefs[targetId] ? '' : 'none';
+            }
+            
+            if (targetId === 'show_chart_labels') {
+                showLabels = prefs[targetId] !== undefined ? prefs[targetId] : true;
+                checkbox.checked = showLabels;
+                Chart.defaults.set('plugins.datalabels', {
+                    display: showLabels,
+                    color: '#fff',
+                    font: { weight: 'bold' },
+                    formatter: Math.round
+                });
+            }
+
+            checkbox.addEventListener('change', function() {
+                const targetId = this.getAttribute('data-target');
+                if (targetId === 'show_chart_labels') {
+                    showLabels = this.checked;
+                    Chart.defaults.set('plugins.datalabels', { display: showLabels });
+                    // Refresh charts
+                    Chart.instances.forEach(c => c.update());
+                } else {
+                    const target = document.getElementById(targetId);
+                    if (target) target.style.display = this.checked ? '' : 'none';
+                }
+                
+                prefs[this.getAttribute('data-target')] = this.checked;
+                
+                // Save to backend
+                fetch('{% url "update_dashboard_prefs" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(prefs)
+                });
+            });
+        });
+
+        // 4. PDF Export Modal Logic
+        const exportBtn = document.getElementById('confirmExportPdfBtn');
+        const modal = document.getElementById('pdfModal');
+        const checkboxContainer = document.getElementById('pdfCheckboxes');
+        
+        // Populate checkboxes based on visible widgets
+        const widgetTitles = {
+            'widget-kpi': 'KPIs',
+            'widget-aging': 'Aging Tickets',
+            'widget-status': 'Status Breakdown',
+            'widget-dept': 'Department Workload',
+            'widget-heatmap': 'Priority Heatmap',
+            'widget-calendar': 'Calendar Trends',
+            'widget-avg-res': 'Avg Resolution Time'
+        };
+        
+        document.querySelector('button[onclick="document.getElementById(\'pdfModal\').style.display=\'flex\'"]').addEventListener('click', () => {
+            checkboxContainer.innerHTML = '';
+            Object.keys(widgetTitles).forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.style.display !== 'none') {
+                    checkboxContainer.innerHTML += `
+                        <label style="display:block;margin-bottom:0.5rem;">
+                            <input type="checkbox" class="pdf-export-cb" value="${id}" checked> ${widgetTitles[id]}
+                        </label>`;
+                }
+            });
+        });
+
+        exportBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            document.body.classList.add('pdf-export-mode');
+            
+            // Hide unchecked widgets temporarily
+            const toHide = [];
+            document.querySelectorAll('.pdf-export-cb').forEach(cb => {
+                if (!cb.checked) {
+                    const el = document.getElementById(cb.value);
+                    if (el) {
+                        el.setAttribute('data-original-display', el.style.display);
+                        el.style.display = 'none';
+                        toHide.push(el);
+                    }
+                }
+            });
+            
+            // Force table to be included implicitly
+            const element = document.getElementById('dashboard-content');
+            const opt = {
+                margin:       0.2,
+                filename:     'dashboard-report.pdf',
+                image:        { type: 'jpeg', quality: 1.0 },
+                html2canvas:  { scale: 2, useCORS: true, windowWidth: 1200 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.body.classList.remove('pdf-export-mode');
+                toHide.forEach(el => {
+                    el.style.display = el.getAttribute('data-original-display');
+                });
+            });
+        });
+    });
+
+    // 5. Side Panel Logic
+    window.openSidePanel = function(ticketId) {
+        document.getElementById('sidePanel').style.right = '0';
+        document.getElementById('sidePanelOverlay').style.display = 'block';
+        
+        fetch(`/ticket/${ticketId}/`)
+            .then(res => res.text())
+            .then(html => {
+                // Extract just the main content wrapper to avoid duplicate sidebars
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const content = doc.querySelector('#ticket-detail-content') || doc.querySelector('main') || doc.body;
+                
+                // Hide header/nav from the fetched content if necessary, or just render it
+                document.getElementById('sidePanelContent').innerHTML = content.outerHTML;
+                
+                // Re-initialize Lucide icons for the newly injected content
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
+                // Re-init lucide icons in side panel
+                lucide.createIcons();
+            });
+    }
+
+    window.closeSidePanel = function() {
+        document.getElementById('sidePanel').style.right = '-800px';
+        document.getElementById('sidePanelOverlay').style.display = 'none';
+        document.getElementById('sidePanelContent').innerHTML = '<div style="text-align:center; padding: 2rem;"><i data-lucide="loader" class="spin" style="width:24px;height:24px;"></i> Loading...</div>';
+    }
+</script>
+{% endblock %}

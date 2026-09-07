@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Servicedesk</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.462.0"></script>
+    
+    <!-- Premium Styles -->
+    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+    
+    <!-- Dynamic Branding -->
+    <style>
+        :root {
+            --primary: {{ branding.primary_color|default:'#4f46e5' }};
+            --primary-rgb: {{ branding.primary_rgb|default:'79, 70, 229' }};
+            --accent: {{ branding.secondary_color|default:'#14b8a6' }};
+            --accent-rgb: {{ branding.accent_rgb|default:'20, 184, 166' }};
+            --chart-1: {{ branding.chart_color_1|default:'#4f46e5' }};
+            --chart-2: {{ branding.chart_color_2|default:'#14b8a6' }};
+            --chart-3: {{ branding.chart_color_3|default:'#f59e0b' }};
+            --chart-4: {{ branding.chart_color_4|default:'#ef4444' }};
+            --chart-5: {{ branding.chart_color_5|default:'#8b5cf6' }};
+        }
+        {% if branding.background_image %}
+        body {
+            background: url('{{ branding.background_image.url }}') no-repeat center center fixed !important;
+            background-size: cover !important;
+        }
+        {% endif %}
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <nav class="sidebar glass-panel">
+            <a href="{% url 'dashboard' %}" aria-label="Go to dashboard" title="Go to dashboard" style="margin-bottom: 2.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; text-align: center; text-decoration: none; border-radius: 14px; padding: 0.5rem; transition: background .2s ease, transform .2s ease;">
+                {% if branding.logo %}
+                <img src="{{ branding.logo.url }}" alt="{{ branding.portal_name }}" style="max-height: 50px; max-width: 100%; object-fit: contain;">
+                {% endif %}
+                <h1 style="font-size: 1.35rem; font-weight: 800; margin: 0; background: linear-gradient(to right, var(--primary), var(--accent)); -webkit-background-clip: text; color: transparent; letter-spacing: -0.5px; line-height: 1.2;">
+                    {{ branding.portal_name|default:'HR Servicedesk' }}
+                </h1>
+            </a>
+            
+            {% if is_agent_mode %}
+            <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i data-lucide="layout-dashboard" style="width:20px;height:20px;"></i> Dashboard
+            </a>
+            {% endif %}
+            
+            {% if is_employee_mode %}
+            <a href="{% url 'queue' %}" class="nav-item {% if request.resolver_match.url_name == 'queue' %}active{% endif %}">
+                <i data-lucide="list" style="width:20px;height:20px;"></i> My Queries
+            </a>
+            {% endif %}
+            {% if is_employee_mode %}
+            <a href="{% url 'submit_ticket' %}" class="nav-item {% if request.resolver_match.url_name == 'submit_ticket' %}active{% endif %}">
+                <i data-lucide="plus-circle" style="width:20px;height:20px;"></i> Submit Request
+            </a>
+            {% endif %}
+
+            <a href="{% url 'knowledge_base' %}" class="nav-item {% if request.resolver_match.url_name == 'knowledge_base' or request.resolver_match.url_name == 'article_detail' %}active{% endif %}">
+                <i data-lucide="book-open" style="width:20px;height:20px;"></i> Knowledge Base (FAQ)
+            </a>
+
+            {% if is_agent_mode %}
+            <a href="{% url 'department_queue' %}" class="nav-item {% if request.resolver_match.url_name == 'department_queue' %}active{% endif %}">
+                <i data-lucide="inbox" style="width:20px;height:20px;"></i> Department Queries
+            </a>
+            {% endif %}
+
+            {% if is_admin_agent_mode %}
+            <a href="{% url 'queue' %}" class="nav-item {% if request.resolver_match.url_name == 'queue' %}active{% endif %}">
+                <i data-lucide="globe" style="width:20px;height:20px;"></i> All Queries
+            </a>
+            {% endif %}
+
+            <div style="margin-top: auto;">
+                {% if is_admin_agent_mode %}
+                <div style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+                    <span style="display: block; padding: 0 1rem 0.5rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Admin Tools</span>
+                    <a href="{% url 'manage_branding' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_branding' %}active{% endif %}">
+                        <i data-lucide="palette" style="width:20px;height:20px;"></i> Portal Branding
+                    </a>
+                    <a href="{% url 'manage_users' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_users' %}active{% endif %}">
+                        <i data-lucide="users" style="width:20px;height:20px;"></i> Users
+                    </a>
+                    <a href="{% url 'manage_teams' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_teams' %}active{% endif %}">
+                        <i data-lucide="building" style="width:20px;height:20px;"></i> Departments
+                    </a>
+                    <a href="{% url 'manage_kb' %}" class="nav-item {% if request.resolver_match.url_name == 'manage_kb' or request.resolver_match.url_name == 'edit_article' or request.resolver_match.url_name == 'add_article' %}active{% endif %}">
+                        <i data-lucide="book-open" style="width:20px;height:20px;"></i> Manage KB
+                    </a>
+                </div>
+                {% endif %}
+
+                {% if can_switch_role %}
+                <div style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+                    <span style="display: block; padding: 0 1rem 0.5rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Current view: {% if is_employee_mode %}Employee{% else %}Agent{% endif %}</span>
+                    <form method="post" action="{% url 'switch_role' is_employee_mode|yesno:'admin,employee' %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="nav-item" style="background: transparent; border: none; width: 100%; text-align: left; cursor: pointer;">
+                            <i data-lucide="repeat-2" style="width:20px;height:20px;"></i>
+                            Switch to {% if is_employee_mode %}Agent{% else %}Employee{% endif %} View
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+                
+                <a href="{% url 'profile_setup' %}" class="nav-item {% if request.resolver_match.url_name == 'profile_setup' %}active{% endif %}">
+                    <i data-lucide="user" style="width:20px;height:20px;"></i> My Profile
+                </a>
+                
+                <form method="post" action="{% url 'logout' %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-item" style="color: var(--danger); background: transparent; border: none; width: 100%; text-align: left; cursor: pointer;">
+                        <i data-lucide="log-out" style="width:20px;height:20px;"></i> Logout
+                    </button>
+                </form>
+            </div>
+        </nav>
+        
+        <main class="main-content">
+            {% if messages %}
+            <div style="margin-bottom: 2rem;">
+                {% for message in messages %}
+                <div class="glass" style="padding: 1rem; border-left: 4px solid {% if message.tags == 'error' %}var(--danger){% elif message.tags == 'warning' %}#f59e0b{% else %}var(--primary){% endif %}; margin-bottom: 0.5rem; background: {% if message.tags == 'error' %}rgba(220, 38, 38, 0.05){% elif message.tags == 'warning' %}rgba(245, 158, 11, 0.05){% else %}rgba(79, 70, 229, 0.05){% endif %};">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+      lucide.createIcons();
+    </script>
+</body>
+</html>

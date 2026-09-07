@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 0 auto;">
+    <div style="margin-bottom: 2rem;">
+        <a href="{% url 'manage_users' %}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem; margin-bottom: 1rem; display: inline-block;">&larr; Back to Users</a>
+        <h2>Add AD User</h2>
+        <p class="text-muted">Pre-provision access before their first login.</p>
+    </div>
+
+    <div class="glass" style="padding: 2rem;">
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label class="form-label">AD Username</label>
+                {{ form.username }}
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Role</label>
+                {{ form.role }}
+            </div>
+            
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <label class="form-label" style="font-size: 1rem; margin-bottom: 0;">Department (Functional Reps Only)</label>
+                    <button type="button" class="btn btn-outline" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" onclick="const cbs = document.querySelectorAll('.checkbox-list input[type=checkbox]'); const allChecked = Array.from(cbs).every(cb => cb.checked); cbs.forEach(cb => cb.checked = !allChecked);">Select / Deselect All</button>
+                </div>
+                <div class="checkbox-list">
+                    {{ form.teams }}
+                </div>
+            </div>
+            
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary">Pre-Provision User</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
