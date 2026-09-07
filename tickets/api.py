@@ -5,7 +5,9 @@ from django.core.cache import cache
 from .models import Ticket
 from .serializers import TicketSerializer
 
-class TicketViewSet(viewsets.ModelViewSet):
+
+class TicketViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only API mirroring the same access rules as the web queue views."""
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -13,7 +15,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'admin':
             return Ticket.objects.all()
-        elif user.role == 'rep' and user.teams.exists():
+        if user.role == 'functional_rep' and user.teams.exists():
             return Ticket.objects.filter(team__in=user.teams.all())
         return Ticket.objects.filter(requester=user)
 
@@ -22,27 +24,15 @@ class TicketViewSet(viewsets.ModelViewSet):
         ticket = self.get_object()
         user_id = request.user.id
         user_name = request.user.get_full_name() or request.user.username
-        
         cache_key = f"ticket_viewers_{ticket.id}"
         viewers = cache.get(cache_key, {})
-        
         import time
         current_time = time.time()
-        
-        # Add or update current user
-        viewers[user_id] = {
-            'name': user_name,
-            'last_seen': current_time
-        }
-        
-        # Remove expired viewers (older than 20 seconds)
+        viewers[user_id] = {'name': user_name, 'last_seen': current_time}
         active_viewers = {
-            uid: data for uid, data in viewers.items() 
+            uid: data for uid, data in viewers.items()
             if current_time - data['last_seen'] < 20
         }
-        
         cache.set(cache_key, active_viewers, 60)
-        
-        # Return other viewers
         others = [data['name'] for uid, data in active_viewers.items() if uid != user_id]
         return Response({'viewers': others})
