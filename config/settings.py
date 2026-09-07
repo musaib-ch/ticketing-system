@@ -1,7 +1,6 @@
 """Settings shared by local development and production deployments."""
 
 import os
-from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,8 +18,16 @@ if not SECRET_KEY:
     else:
         raise RuntimeError('DJANGO_SECRET_KEY must be set when DJANGO_DEBUG=False.')
 
-ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost' if DEBUG else '')
-CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')
+ALLOWED_HOSTS = env_list(
+    'DJANGO_ALLOWED_HOSTS',
+    '127.0.0.1,localhost,.trycloudflare.com' if DEBUG else ''
+)
+
+CSRF_TRUSTED_ORIGINS = env_list(
+    'DJANGO_CSRF_TRUSTED_ORIGINS',
+    'https://*.trycloudflare.com' if DEBUG else ''
+)
+
 SITE_URL = os.getenv('SITE_URL', 'http://127.0.0.1:8000').rstrip('/')
 
 INSTALLED_APPS = [
@@ -82,51 +89,31 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
-# ---------------------------------------------------------------------------
-# Static files – WhiteNoise serves them directly in production (no Nginx needed)
-# ---------------------------------------------------------------------------
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# WhiteNoise serves static assets directly from the Render web service.
+# Uploaded media is local by default for development, but can be moved to an
+# S3-compatible store (including Supabase Storage) in production by setting
+# AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL.
 STORAGES = {
-    'staticfiles': {
-        'BACKEND': (
-            'whitenoise.storage.CompressedManifestStaticFilesStorage'
-            if not DEBUG
-            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
-        ),
-    },
-    'default': {
-        # Cloudflare R2 media storage in production; local disk in development.
-        'BACKEND': (
-            'storages.backends.s3boto3.S3Boto3Storage'
-            if not DEBUG and os.getenv('AWS_STORAGE_BUCKET_NAME')
-            else 'django.core.files.storage.FileSystemStorage'
-        ),
-    },
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
 }
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
-# Cloudflare R2 / S3-compatible media storage (production only)
-# Set these env vars in Render's dashboard: AWS_STORAGE_BUCKET_NAME, AWS_S3_ENDPOINT_URL,
-# AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_CUSTOM_DOMAIN (optional CDN domain).
-if not DEBUG and os.getenv('AWS_STORAGE_BUCKET_NAME'):
+if os.getenv('AWS_STORAGE_BUCKET_NAME'):
+    STORAGES['default'] = {'BACKEND': 'storages.backends.s3.S3Storage'}
     AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
-    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL')          # e.g. https://<account>.r2.cloudflarestorage.com
-    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'auto')
-    AWS_QUERYSTRING_AUTH = False                                      # Use public bucket or signed via CDN
-    _r2_domain = os.getenv('AWS_S3_CUSTOM_DOMAIN')
-    if _r2_domain:
-        AWS_S3_CUSTOM_DOMAIN = _r2_domain
-    MEDIA_URL = f'https://{_r2_domain}/' if _r2_domain else f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
-else:
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
+    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', '') or None
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'ap-southeast-1')
+    AWS_S3_ADDRESSING_STYLE = os.getenv('AWS_S3_ADDRESSING_STYLE', 'path')
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = os.getenv('AWS_QUERYSTRING_AUTH', 'True').lower() == 'true'
+    AWS_S3_FILE_OVERWRITE = False
 
-# ---------------------------------------------------------------------------
-# Microsoft Entra ID SSO
-# ---------------------------------------------------------------------------
 # Local development authenticates against mock_ad.xlsx. Production allows only
 # Microsoft Entra ID SSO, initiated by the application callback in users.views.
 MS_SSO_ENABLED = not DEBUG and all(os.getenv(name) for name in ('MS_CLIENT_ID', 'MS_CLIENT_SECRET', 'MS_TENANT_ID'))
@@ -137,10 +124,6 @@ AUTHENTICATION_BACKENDS = (
     else ['django.contrib.auth.backends.ModelBackend']
 )
 
-# ---------------------------------------------------------------------------
-# Email – reads from environment variables; superadmins can override via
-# the portal's SMTP settings page (users.models.SmtpSettings).
-# ---------------------------------------------------------------------------
 EMAIL_BACKEND = os.getenv('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', '')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
@@ -149,23 +132,95 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@localhost')
 
+# Inbound email configuration. Both the Celery task and management command use
+# these same names so deployments cannot accidentally configure one path only.
+IMAP_HOST = os.getenv('IMAP_HOST', os.getenv('IMAP_SERVER', ''))
+IMAP_USER = os.getenv('IMAP_USER', '')
+IMAP_PASSWORD = os.getenv('IMAP_PASSWORD', '')
+IMAP_FOLDER = os.getenv('IMAP_FOLDER', 'INBOX')
+
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS')
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+# The browsable API is only ever used by the logged-in web app itself (see the
+# ticket "viewing" presence endpoint), so it authenticates via the same
+# session cookie as the rest of the site. There is no separate API client, so
+# no token-based auth is exposed here - one less unauthenticated endpoint to
+# secure and rate-limit.
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication', 'rest_framework.authentication.SessionAuthentication'),
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework.authentication.SessionAuthentication',),
     'DEFAULT_PERMISSION_CLASSES': ('rest_framework.permissions.IsAuthenticated',),
 }
-SIMPLE_JWT = {'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60), 'REFRESH_TOKEN_LIFETIME': timedelta(days=1), 'AUTH_HEADER_TYPES': ('Bearer',)}
+
+# Upload limits enforced in tickets.utils.validate_uploaded_file and on
+# model FileField validators.
+MAX_ATTACHMENT_SIZE_MB = int(os.getenv('MAX_ATTACHMENT_SIZE_MB', '10'))
+MAX_IMAGE_SIZE_MB = int(os.getenv('MAX_IMAGE_SIZE_MB', '5'))
+
+# The CSRF token is only ever read out of the rendered template ({{ csrf_token }}),
+# never out of the cookie via JavaScript, so the cookie itself can be locked down.
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Shared cache backend. In production this must be shared across all
+# app-server processes/workers (e.g. Redis) - the "who else is viewing this
+# ticket" presence indicator (tickets.api.TicketViewSet.viewing) stores its
+# state here, and a process-local cache would make it work inconsistently
+# behind more than one worker.
+REDIS_CACHE_URL = os.getenv('REDIS_CACHE_URL', '')
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    } if DEBUG or not REDIS_CACHE_URL else {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_CACHE_URL,
+    }
+}
+
+# Send errors to the console/process log so they reach whatever the deployment
+# already collects (journald, Docker log driver, etc.) without needing extra
+# infrastructure. DEBUG=True keeps Django's own debug page instead.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = os.getenv('DJANGO_SECURE_SSL_REDIRECT', 'True').lower() == 'true'
+    # Cloudflare terminates TLS and forwards plain HTTP to the origin server.
+    # Setting SECURE_SSL_REDIRECT=True here would cause an infinite redirect loop
+    # because Django would always see the incoming request as HTTP.
+    # Cloudflare itself enforces HTTPS for end-users, so we disable the redirect.
+    SECURE_SSL_REDIRECT = os.getenv('DJANGO_SECURE_SSL_REDIRECT', 'False').lower() == 'true'
+
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = int(os.getenv('DJANGO_HSTS_SECONDS', '31536000'))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+    # Trust the X-Forwarded-Proto header injected by Cloudflare / Nginx so that
+    # Django knows the original request was HTTPS.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+    # Use the Host header forwarded by Cloudflare instead of the raw server host.
+    USE_X_FORWARDED_HOST = True
