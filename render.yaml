@@ -1,123 +1,72 @@
-databases:
-  - name: ticketing-db
-    plan: free          # upgrade to starter/standard for production use
-
 services:
   - type: web
-    name: ticketing
-    env: python
-    plan: free          # upgrade as needed
-    region: oregon      # change to: frankfurt, singapore, ohio, virginia
-    buildCommand: "./build.sh"
-    startCommand: "gunicorn config.wsgi:application --workers 2 --bind 0.0.0.0:$PORT --timeout 120"
-    healthCheckPath: /accounts/login/
-
+    name: hr-ticketing
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python manage.py migrate --noinput && python manage.py collectstatic --noinput
+    startCommand: gunicorn config.wsgi:application --workers 2 --threads 2 --timeout 120 --access-logfile - --error-logfile -
+    healthCheckPath: /login/
     envVars:
-      # -----------------------------------------------------------------------
-      # Core Django settings
-      # -----------------------------------------------------------------------
       - key: DJANGO_DEBUG
         value: "False"
-
       - key: DJANGO_SECRET_KEY
-        generateValue: true    # Render auto-generates a secure random value
-
+        sync: false
       - key: DJANGO_ALLOWED_HOSTS
-        value: ""              # Render sets $RENDER_EXTERNAL_HOSTNAME — see note below
-
+        sync: false
       - key: DJANGO_CSRF_TRUSTED_ORIGINS
-        value: ""              # e.g. https://ticketing.onrender.com — fill in after first deploy
-
+        sync: false
       - key: SITE_URL
-        value: ""              # e.g. https://ticketing.onrender.com — fill in after first deploy
-
-      - key: DJANGO_TIME_ZONE
-        value: "Asia/Karachi"
-
-      - key: DJANGO_SECURE_SSL_REDIRECT
-        value: "True"
-
-      # -----------------------------------------------------------------------
-      # PostgreSQL — Render auto-fills these from the database above
-      # -----------------------------------------------------------------------
+        sync: false
       - key: POSTGRES_DB
-        fromDatabase:
-          name: ticketing-db
-          property: database
-
+        value: postgres
       - key: POSTGRES_USER
-        fromDatabase:
-          name: ticketing-db
-          property: user
-
+        sync: false
       - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: ticketing-db
-          property: password
-
+        sync: false
       - key: POSTGRES_HOST
-        fromDatabase:
-          name: ticketing-db
-          property: host
-
+        sync: false
       - key: POSTGRES_PORT
-        fromDatabase:
-          name: ticketing-db
-          property: port
-
+        value: "5432"
       - key: POSTGRES_SSLMODE
-        value: "require"
-
-      # -----------------------------------------------------------------------
-      # Microsoft Entra ID SSO (set in Render dashboard — do NOT commit secrets)
-      # -----------------------------------------------------------------------
+        value: require
       - key: MS_TENANT_ID
-        sync: false    # Mark as secret — enter value manually in Render dashboard
-
+        sync: false
       - key: MS_CLIENT_ID
         sync: false
-
       - key: MS_CLIENT_SECRET
         sync: false
-
-      # -----------------------------------------------------------------------
-      # Email (optional — can also configure via the portal SMTP settings page)
-      # -----------------------------------------------------------------------
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
       - key: EMAIL_HOST
-        value: ""
-
-      - key: EMAIL_PORT
-        value: "587"
-
+        sync: false
       - key: EMAIL_HOST_USER
-        value: ""
-
+        sync: false
       - key: EMAIL_HOST_PASSWORD
         sync: false
-
-      - key: EMAIL_USE_TLS
-        value: "True"
-
-      - key: DEFAULT_FROM_EMAIL
-        value: "no-reply@example.com"
-
-      # -----------------------------------------------------------------------
-      # Cloudflare R2 media storage (set in Render dashboard)
-      # -----------------------------------------------------------------------
+      - key: REDIS_CACHE_URL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false
       - key: AWS_STORAGE_BUCKET_NAME
-        sync: false    # Your R2 bucket name
-
+        sync: false
       - key: AWS_S3_ENDPOINT_URL
-        sync: false    # https://<account-id>.r2.cloudflarestorage.com
-
+        sync: false
       - key: AWS_ACCESS_KEY_ID
         sync: false
-
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
-
-      - key: AWS_S3_CUSTOM_DOMAIN
-        value: ""      # Optional: your R2 custom domain / CDN URL (without https://)
-
       - key: AWS_S3_REGION_NAME
-        value: "auto"
+        value: ap-southeast-1
+      - key: AWS_S3_ADDRESSING_STYLE
+        value: path
+      - key: AWS_QUERYSTRING_AUTH
+        value: "True"
+      - key: IMAP_HOST
+        sync: false
+      - key: IMAP_USER
+        sync: false
+      - key: IMAP_PASSWORD
+        sync: false
+      - key: IMAP_FOLDER
+        value: INBOX

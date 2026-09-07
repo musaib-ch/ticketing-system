@@ -12,14 +12,12 @@ colorama==0.4.6
 Django==6.1
 django-cors-headers==4.9.0
 djangorestframework==3.18.0
-djangorestframework-simplejwt==5.5.1
-django-storages[s3]==1.14.6
+djangorestframework_simplejwt==5.5.1
 idna==3.18
 kombu==5.6.2
 packaging==26.3
 pillow==12.3.0
 prompt_toolkit==3.0.53
-psycopg[binary]==3.3.3
 PyJWT==2.13.0
 python-dateutil==2.9.0.post0
 redis==8.1.0
@@ -31,6 +29,8 @@ tzlocal==5.4.4
 urllib3==2.7.0
 vine==5.1.0
 wcwidth==0.8.2
-whitenoise==6.9.0
 gunicorn==25.1.0
+psycopg[binary]==3.3.3
 boto3==1.40.30
+django-storages==1.14.6
+whitenoise==6.9.0
